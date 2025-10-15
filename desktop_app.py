@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 import tkinter as tk
 from tkinter import ttk, messagebox
+import webbrowser
 
 HERE = Path(__file__).resolve().parent
 EXPORT_SCRIPT = HERE / "export_playlist_to_csv.py"
@@ -94,8 +95,12 @@ class SimpleApp(tk.Tk):
             if p1.returncode != 0:
                 self.after(0, lambda: messagebox.showerror("Export failed", p1.stderr or p1.stdout))
                 return
-            self.after(0, lambda: self.set_status("Generating bingo PDF..."))
-            cmd2 = [sys.executable, str(BINGO_SCRIPT), "--csv", csv_out, "--n", str(self.n_var.get()), "--out", pdf_out]
+            # open the generated PDF in the default application / browser
+            try:
+                webbrowser.open(Path(pdf_out).resolve().as_uri())
+            except Exception:
+                # fallback: show path in messagebox
+                self.after(0, lambda: messagebox.showinfo("Done", f"CSV: {csv_out}\nPDF: {pdf_out}"))
             if self.title_var.get().strip():
                 cmd2 += ["--title", self.title_var.get().strip()]
             if self.no_repeat_var.get():
