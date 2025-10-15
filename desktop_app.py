@@ -32,65 +32,78 @@ def to_filename(name: str, ext: str) -> str:
 class App(tk.Tk):
     def __init__(self):
         super().__init__()
-        self.title("Music Bingo — Desktop")
-        self.geometry("640x520")
+        self.title("Music Bingo")
+        self.geometry("640x420")
+        self.resizable(False, False)
 
-        frm = ttk.Frame(self, padding=12)
+        style = ttk.Style(self)
+        try:
+            style.theme_use('clam')
+        except Exception:
+            pass
+        style.configure('Header.TLabel', font=('Helvetica', 14, 'bold'))
+        style.configure('TLabel', font=('Helvetica', 10))
+        style.configure('TButton', padding=6)
+
+        frm = ttk.Frame(self, padding=(14, 12))
         frm.pack(fill=tk.BOTH, expand=True)
 
-        # Playlist name
-        ttk.Label(frm, text="Spotify playlist name:").grid(row=0, column=0, sticky=tk.W)
-        self.playlist_var = tk.StringVar()
-        ttk.Entry(frm, textvariable=self.playlist_var, width=50).grid(row=0, column=1, columnspan=3, sticky=tk.W)
+        ttk.Label(frm, text="Music Bingo", style='Header.TLabel').grid(row=0, column=0, columnspan=4, pady=(0,8), sticky=tk.W)
 
-        # Market (radio buttons)
-        ttk.Label(frm, text="Market:").grid(row=1, column=0, sticky=tk.W)
+        # Playlist
+        ttk.Label(frm, text="Playlist name or URL:").grid(row=1, column=0, sticky=tk.W)
+        self.playlist_var = tk.StringVar()
+        ttk.Entry(frm, textvariable=self.playlist_var, width=56).grid(row=1, column=1, columnspan=3, sticky=tk.W, padx=(6,0))
+
+        # Market
+        ttk.Label(frm, text="Market:").grid(row=2, column=0, sticky=tk.W, pady=(8,0))
         self.market_var = tk.StringVar(value="GB")
         markets = [("GB", "GB"), ("US", "US"), ("Auto", "")]
         col = 1
         for text, val in markets:
             rb = ttk.Radiobutton(frm, text=text, value=val, variable=self.market_var)
-            rb.grid(row=1, column=col, sticky=tk.W)
+            rb.grid(row=2, column=col, sticky=tk.W, padx=(6,0), pady=(8,0))
             col += 1
 
-        # Number of cards
-        ttk.Label(frm, text="Number of cards:").grid(row=2, column=0, sticky=tk.W)
+        # Cards and title/subtitle
+        ttk.Label(frm, text="Cards:").grid(row=3, column=0, sticky=tk.W, pady=(8,0))
         self.n_var = tk.IntVar(value=6)
-        ttk.Spinbox(frm, from_=1, to=200, textvariable=self.n_var, width=6).grid(row=2, column=1, sticky=tk.W)
+        ttk.Spinbox(frm, from_=1, to=200, textvariable=self.n_var, width=6).grid(row=3, column=1, sticky=tk.W, pady=(8,0))
 
-        # Title / subtitle
-        ttk.Label(frm, text="Card title (optional):").grid(row=3, column=0, sticky=tk.W)
+        ttk.Label(frm, text="Title (optional):").grid(row=3, column=2, sticky=tk.W, padx=(16,0), pady=(8,0))
         self.title_var = tk.StringVar()
-        ttk.Entry(frm, textvariable=self.title_var, width=50).grid(row=3, column=1, columnspan=3, sticky=tk.W)
+        ttk.Entry(frm, textvariable=self.title_var, width=34).grid(row=3, column=3, sticky=tk.W, pady=(8,0))
 
-        ttk.Label(frm, text="Subtitle (optional):").grid(row=4, column=0, sticky=tk.W)
+        ttk.Label(frm, text="Subtitle (optional):").grid(row=4, column=2, sticky=tk.W, padx=(16,0))
         self.subtitle_var = tk.StringVar()
-        ttk.Entry(frm, textvariable=self.subtitle_var, width=50).grid(row=4, column=1, columnspan=3, sticky=tk.W)
+        ttk.Entry(frm, textvariable=self.subtitle_var, width=34).grid(row=4, column=3, sticky=tk.W)
 
-        # No repeat across
+        # No repeat
         self.no_repeat_var = tk.BooleanVar(value=False)
-        ttk.Checkbutton(frm, text="Avoid reusing same song across different cards", variable=self.no_repeat_var).grid(row=5, column=0, columnspan=4, sticky=tk.W)
+        ttk.Checkbutton(frm, text="Avoid reusing same song across different cards", variable=self.no_repeat_var).grid(row=5, column=0, columnspan=4, sticky=tk.W, pady=(8,0))
 
-        # Output display paths
-        ttk.Label(frm, text="CSV output path:").grid(row=6, column=0, sticky=tk.W)
+        # Outputs
+        ttk.Label(frm, text="CSV output:").grid(row=6, column=0, sticky=tk.W, pady=(10,0))
         self.csv_out_var = tk.StringVar(value="csv_files/playlist_tracks.csv")
-        ttk.Entry(frm, textvariable=self.csv_out_var, width=50).grid(row=6, column=1, columnspan=3, sticky=tk.W)
+        ttk.Entry(frm, textvariable=self.csv_out_var, width=56).grid(row=6, column=1, columnspan=3, sticky=tk.W, padx=(6,0), pady=(10,0))
 
-        ttk.Label(frm, text="PDF output path:").grid(row=7, column=0, sticky=tk.W)
+        ttk.Label(frm, text="PDF output:").grid(row=7, column=0, sticky=tk.W)
         self.pdf_out_var = tk.StringVar(value="quiz_pdfs/bingo_cards.pdf")
-        ttk.Entry(frm, textvariable=self.pdf_out_var, width=50).grid(row=7, column=1, columnspan=3, sticky=tk.W)
+        ttk.Entry(frm, textvariable=self.pdf_out_var, width=56).grid(row=7, column=1, columnspan=3, sticky=tk.W, padx=(6,0))
 
         # Buttons
-        self.run_btn = ttk.Button(frm, text="Run", command=self.on_run)
-        self.run_btn.grid(row=8, column=1, sticky=tk.W, pady=8)
-        ttk.Button(frm, text="Quit", command=self.destroy).grid(row=8, column=2, sticky=tk.W)
-        # Status label
+        btn_frame = ttk.Frame(frm)
+        btn_frame.grid(row=8, column=0, columnspan=4, pady=(12,0))
+        self.run_btn = ttk.Button(btn_frame, text="Run", command=self.on_run)
+        self.run_btn.grid(row=0, column=0, padx=(0,8))
+        ttk.Button(btn_frame, text="Quit", command=self.destroy).grid(row=0, column=1)
+
+        # Status
         self.status_var = tk.StringVar(value="Ready")
         ttk.Label(frm, textvariable=self.status_var).grid(row=9, column=0, columnspan=4, sticky=tk.W, pady=(8,0))
 
         frm.columnconfigure(3, weight=1)
 
-    # simple status setter (replaces the log box)
     def set_status(self, s: str):
         self.status_var.set(s)
 
@@ -100,11 +113,9 @@ class App(tk.Tk):
             messagebox.showerror("Missing playlist", "Please enter a playlist name or URL.")
             return
 
-        # compute filenames
         csv_out = self.csv_out_var.get().strip() or f"csv_files/{to_filename(playlist.replace(' ', '_'), 'csv')}"
         pdf_out = self.pdf_out_var.get().strip() or f"quiz_pdfs/{to_filename(playlist.replace(' ', '_') + '_bingo', 'pdf')}"
 
-        # disable run button while running
         self.run_btn.config(state=tk.DISABLED)
         self.set_status(f"Starting export for '{playlist}' -> {csv_out}")
 
