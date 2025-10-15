@@ -2,3 +2,9 @@
 /.cache
 /.venv
 /.env
+/csv_files
+/quiz_pdfs
+/__pycache__
+*.pyc
+*.pyo
+*.pyd
