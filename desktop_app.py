@@ -14,7 +14,7 @@ import subprocess
 import sys
 from pathlib import Path
 import tkinter as tk
-from tkinter import ttk, scrolledtext, messagebox
+from tkinter import ttk, messagebox
 
 HERE = Path(__file__).resolve().parent
 EXPORT_SCRIPT = HERE / "export_playlist_to_csv.py"
@@ -43,13 +43,18 @@ class App(tk.Tk):
         self.playlist_var = tk.StringVar()
         ttk.Entry(frm, textvariable=self.playlist_var, width=50).grid(row=0, column=1, columnspan=3, sticky=tk.W)
 
-        # Market
-        ttk.Label(frm, text="Market (GB/US):").grid(row=1, column=0, sticky=tk.W)
+        # Market (radio buttons)
+        ttk.Label(frm, text="Market:").grid(row=1, column=0, sticky=tk.W)
         self.market_var = tk.StringVar(value="GB")
-        ttk.Entry(frm, textvariable=self.market_var, width=10).grid(row=1, column=1, sticky=tk.W)
+        markets = [("GB", "GB"), ("US", "US"), ("Auto", "")]
+        col = 1
+        for text, val in markets:
+            rb = ttk.Radiobutton(frm, text=text, value=val, variable=self.market_var)
+            rb.grid(row=1, column=col, sticky=tk.W)
+            col += 1
 
         # Number of cards
-        ttk.Label(frm, text="# of 4x4 cards:").grid(row=2, column=0, sticky=tk.W)
+        ttk.Label(frm, text="Number of cards:").grid(row=2, column=0, sticky=tk.W)
         self.n_var = tk.IntVar(value=6)
         ttk.Spinbox(frm, from_=1, to=200, textvariable=self.n_var, width=6).grid(row=2, column=1, sticky=tk.W)
 
@@ -79,18 +84,15 @@ class App(tk.Tk):
         self.run_btn = ttk.Button(frm, text="Run", command=self.on_run)
         self.run_btn.grid(row=8, column=1, sticky=tk.W, pady=8)
         ttk.Button(frm, text="Quit", command=self.destroy).grid(row=8, column=2, sticky=tk.W)
+        # Status label
+        self.status_var = tk.StringVar(value="Ready")
+        ttk.Label(frm, textvariable=self.status_var).grid(row=9, column=0, columnspan=4, sticky=tk.W, pady=(8,0))
 
-        # Log window
-        ttk.Label(frm, text="Log:").grid(row=9, column=0, sticky=tk.W)
-        self.log = scrolledtext.ScrolledText(frm, height=12, wrap=tk.WORD)
-        self.log.grid(row=10, column=0, columnspan=4, sticky=tk.NSEW)
-
-        frm.rowconfigure(10, weight=1)
         frm.columnconfigure(3, weight=1)
 
-    def log_msg(self, s: str):
-        self.log.insert(tk.END, s + "\n")
-        self.log.see(tk.END)
+    # simple status setter (replaces the log box)
+    def set_status(self, s: str):
+        self.status_var.set(s)
 
     def on_run(self):
         playlist = self.playlist_var.get().strip()
@@ -104,7 +106,7 @@ class App(tk.Tk):
 
         # disable run button while running
         self.run_btn.config(state=tk.DISABLED)
-        self.log_msg(f"Starting export for '{playlist}' -> {csv_out}")
+        self.set_status(f"Starting export for '{playlist}' -> {csv_out}")
 
         thread = threading.Thread(target=self.run_pipeline, args=(playlist, csv_out, pdf_out), daemon=True)
         thread.start()
@@ -113,14 +115,13 @@ class App(tk.Tk):
         try:
             # Run export script
             cmd1 = [sys.executable, str(EXPORT_SCRIPT), "--name", playlist, "--out", csv_out, "--market", self.market_var.get().strip() or "GB"]
-            self.log_msg("Running: " + " ".join(cmd1))
+            self.set_status("Running export script...")
             p1 = subprocess.run(cmd1, capture_output=True, text=True)
-            self.log_msg(p1.stdout.strip())
             if p1.returncode != 0:
-                self.log_msg(p1.stderr.strip())
-                messagebox.showerror("Export failed", "Export script failed. See logs.")
+                err = p1.stderr.strip() or p1.stdout.strip() or "Export script failed"
+                messagebox.showerror("Export failed", err)
                 return
-            self.log_msg(f"Export complete: {csv_out}")
+            self.set_status(f"Export complete: {csv_out}")
 
             # Run bingo script
             cmd2 = [sys.executable, str(BINGO_SCRIPT), "--csv", csv_out, "--n", str(self.n_var.get()), "--out", pdf_out]
@@ -131,17 +132,15 @@ class App(tk.Tk):
             if self.no_repeat_var.get():
                 cmd2 += ["--no-repeat-across"]
 
-            self.log_msg("Running: " + " ".join(cmd2))
+            self.set_status("Running bingo generator...")
             p2 = subprocess.run(cmd2, capture_output=True, text=True)
-            self.log_msg(p2.stdout.strip())
             if p2.returncode != 0:
-                self.log_msg(p2.stderr.strip())
-                messagebox.showerror("Bingo generation failed", "Bingo script failed. See logs.")
+                err = p2.stderr.strip() or p2.stdout.strip() or "Bingo script failed"
+                messagebox.showerror("Bingo generation failed", err)
                 return
-            self.log_msg(f"Bingo complete: {pdf_out}")
+            self.set_status(f"Bingo complete: {pdf_out}")
             messagebox.showinfo("Done", f"Exported CSV: {csv_out}\nBingo PDF: {pdf_out}")
         except Exception as e:
-            self.log_msg(f"Error: {e}")
             messagebox.showerror("Error", str(e))
         finally:
             self.run_btn.config(state=tk.NORMAL)
