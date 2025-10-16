@@ -95,24 +95,31 @@ class SimpleApp(tk.Tk):
             if p1.returncode != 0:
                 self.after(0, lambda: messagebox.showerror("Export failed", p1.stderr or p1.stdout))
                 return
+
+            # prepare and run bingo generator
+            self.after(0, lambda: self.set_status("Generating bingo PDF..."))
+            cmd2 = [sys.executable, str(BINGO_SCRIPT), "--csv", csv_out, "--n", str(self.n_var.get()), "--out", pdf_out]
+            if self.title_var.get().strip():
+                cmd2 += ["--title", self.title_var.get().strip()]
+            if self.no_repeat_var.get():
+                cmd2 += ["--no-repeat-across"]
+
+            p2 = subprocess.run(cmd2, capture_output=True, text=True)
+            if p2.returncode != 0:
+                self.after(0, lambda: messagebox.showerror("Bingo failed", p2.stderr or p2.stdout))
+                return
+
             # open the generated PDF in the default application / browser
             try:
                 webbrowser.open(Path(pdf_out).resolve().as_uri())
             except Exception:
                 # fallback: show path in messagebox
-                self.after(0, lambda: messagebox.showinfo("Done", f"CSV: {csv_out}\nPDF: {pdf_out}"))
-            if self.title_var.get().strip():
-                cmd2 += ["--title", self.title_var.get().strip()]
-            if self.no_repeat_var.get():
-                cmd2 += ["--no-repeat-across"]
-            p2 = subprocess.run(cmd2, capture_output=True, text=True)
-            if p2.returncode != 0:
-                self.after(0, lambda: messagebox.showerror("Bingo failed", p2.stderr or p2.stdout))
-                return
+                self.after(0, lambda: messagebox.showinfo("Done", f"COMPLETED\nPDF located at: {pdf_out}"))
+
             self.after(0, lambda: self.set_status("Done"))
-            self.after(0, lambda: messagebox.showinfo("Done", f"COMPLETED\nPDF located at: {pdf_out}"))
-        except Exception as e:
-            self.after(0, lambda: messagebox.showerror("Error", str(e)))
+        except Exception as exc:
+            msg = str(exc)
+            self.after(0, lambda m=msg: messagebox.showerror("Error", m))
         finally:
             self.after(0, lambda: self.set_status("Ready"))
 
